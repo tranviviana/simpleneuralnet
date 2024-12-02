@@ -59,8 +59,6 @@ class PerceptronModel(Module):
         """
         "*** YOUR CODE HERE ***"
         return tensordot(x, self.get_weights())
-        
-
     def get_prediction(self, x):
         """
         Calculates the predicted class for a single data point `x`.
@@ -72,7 +70,6 @@ class PerceptronModel(Module):
             return -1 
         else:
             return 1
-
 
 
     def train(self, dataset):
@@ -100,10 +97,6 @@ class PerceptronModel(Module):
                 if total_errors == False:
                     break
      
-
-
-
-
 class RegressionModel(Module):
     """
     A neural network model for approximating a function that maps from real
@@ -114,6 +107,15 @@ class RegressionModel(Module):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
         super().__init__()
+        self.learning_rate = 0.005
+        self.batch_size = 5
+        self.hidden_size = 100
+        self.w1 = Parameter(torch.randn(1, self.hidden_size))  
+        self.b1 =  Parameter(torch.zeros(self.hidden_size)) 
+        self.w2 = Parameter(torch.randn(self.hidden_size, 1))
+        self.b2 = Parameter(torch.zeros(1))
+
+
 
 
 
@@ -127,8 +129,10 @@ class RegressionModel(Module):
             A node with shape (batch_size x 1) containing predicted y-values
         """
         "*** YOUR CODE HERE ***"
-
-    
+        z1 = matmul(x, self.w1) + self.b1
+        a1 = relu(z1)
+        z2 = matmul(a1, self.w2) + self.b2
+        return z2
     def get_loss(self, x, y):
         """
         Computes the loss for a batch of examples.
@@ -140,6 +144,9 @@ class RegressionModel(Module):
         Returns: a tensor of size 1 containing the loss
         """
         "*** YOUR CODE HERE ***"
+        y_pred = self.forward(x)
+        loss = mse_loss(y_pred, y)
+        return loss
  
         
 
@@ -158,6 +165,27 @@ class RegressionModel(Module):
             
         """
         "*** YOUR CODE HERE ***"
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
+        
+        dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
+        "*** YOUR CODE HERE ***"
+        while True:  
+            counter = 0
+            running_loss = 0 
+            for sample in dataloader:
+                counter += 1
+                optimizer.zero_grad()
+                current_sample = sample['x']
+                current_label = sample['label']
+                loss = self.get_loss(current_sample, current_label)
+                loss.backward()
+                optimizer.step()
+                running_loss += loss.item()
+            if running_loss / counter < 0.02:
+                break
+                    
+            
+
 
             
 
