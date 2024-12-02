@@ -87,9 +87,8 @@ class PerceptronModel(Module):
         with no_grad():
             dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
             "*** YOUR CODE HERE ***"
-            
             while True:
-                total_errors = True
+                total_errors = False #error doesnt exist
                 for sample in dataloader:
                     current_sample = sample['x']
                     current_label = sample['label']
@@ -97,8 +96,8 @@ class PerceptronModel(Module):
                     error = current_label - output
                     if error != 0:
                         self.w += current_label * current_sample
-                        total_errors = False
-                if total_errors:
+                        total_errors = True #error exists
+                if total_errors == False:
                     break
      
 
