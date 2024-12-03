@@ -215,6 +215,16 @@ class DigitClassificationModel(Module):
         input_size = 28 * 28
         output_size = 10
         "*** YOUR CODE HERE ***"
+        self.epochs = 20
+        self.batch_size = 15
+        self.hidden_size = 300
+        self.output_size = output_size
+        self.input_size = input_size
+        self.lr = 0.002
+        self.w1 = Parameter(torch.randn(self.input_size, self.hidden_size))
+        self.w2 = Parameter(torch.randn(self.hidden_size, self.output_size))
+        self.b1 = Parameter(torch.zeros(1, self.hidden_size))
+        self.b2 = Parameter(torch.zeros(1, self.output_size))
 
 
 
@@ -234,6 +244,12 @@ class DigitClassificationModel(Module):
                 (also called logits)
         """
         """ YOUR CODE HERE """
+        
+        z1 = matmul(x, self.w1) + self.b1
+        a1 = relu(z1)
+        z2 = matmul(a1, self.w2) + self.b2
+        return z2
+        
 
  
 
@@ -251,6 +267,8 @@ class DigitClassificationModel(Module):
         Returns: a loss tensor
         """
         """ YOUR CODE HERE """
+        y_prediction = self.run(x)
+        return cross_entropy(y_prediction, y)
 
     
         
@@ -260,6 +278,21 @@ class DigitClassificationModel(Module):
         Trains the model.
         """
         """ YOUR CODE HERE """
+        optimizer = optim.Adam(self.parameters(), lr=self.lr)
+        
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        "*** YOUR CODE HERE ***"
+        for _ in range(self.epochs):  
+            for sample in dataloader:
+                optimizer.zero_grad()
+                current_sample = sample['x']
+                current_label = sample['label']
+                loss = self.get_loss(current_sample, current_label)
+                loss.backward()
+                optimizer.step()
+            if dataset.get_validation_accuracy() > .98:
+                break
+
 
 
 
