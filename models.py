@@ -133,6 +133,7 @@ class RegressionModel(Module):
         a1 = relu(z1)
         z2 = matmul(a1, self.w2) + self.b2
         return z2
+    
     def get_loss(self, x, y):
         """
         Computes the loss for a batch of examples.
@@ -313,6 +314,11 @@ class LanguageIDModel(Module):
         self.languages = ["English", "Spanish", "Finnish", "Dutch", "Polish"]
         super(LanguageIDModel, self).__init__()
         "*** YOUR CODE HERE ***"
+        self.hidden_size = 256
+        self.output_size = len(self.languages)
+        self.embedding = Linear(self.num_chars, self.hidden_size)
+        self.rnn = Linear(self.hidden_size, self.hidden_size)
+        self.output = Linear(self.hidden_size, self.output_size)
 
 
     def run(self, xs):
@@ -344,7 +350,17 @@ class LanguageIDModel(Module):
             A node with shape (batch_size x 5) containing predicted scores
                 (also called logits)
         """
-        "*** YOUR CODE HERE ***"
+        "*** YOUR CODE HERE ***"        
+        
+        
+        hidden = torch.zeros(1, self.hidden_size)
+        
+        for x in xs:
+            x = x.t()
+            embedded = self.embedding(x)
+            hidden = relu(self.rnn(hidden + embedded.sum(dim=0, keepdim=True)))
+        
+        return self.output(hidden)
 
     
     def get_loss(self, xs, y):
@@ -362,6 +378,8 @@ class LanguageIDModel(Module):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        predicted = self.run(xs)
+        return cross_entropy(predicted, y)
         
 
     def train(self, dataset):
@@ -379,6 +397,23 @@ class LanguageIDModel(Module):
         For more information, look at the pytorch documentation of torch.movedim()
         """
         "*** YOUR CODE HERE ***"
+        optimizer = optim.Adam(self.parameters(), lr=0.01)
+        dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+
+        for _ in range(10):
+            for batch in dataloader:
+                xs = [movedim(char, 0, 1) for char in batch['x']]
+                y = batch['label']
+                
+                optimizer.zero_grad()
+                loss = self.get_loss(xs, y)
+                loss.backward()
+                optimizer.step()
+            
+            if dataset.get_validation_accuracy() > 0.85:
+                break
+
+        
 
         
 
@@ -399,8 +434,17 @@ def Convolve(input: tensor, weight: tensor):
     weight_dimensions = weight.shape
     Output_Tensor = tensor(())
     "*** YOUR CODE HERE ***"
-
-    
+    input_height, input_width = input_tensor_dimensions
+    weight_height, weight_width = weight_dimensions
+    output_height = input_height - weight_height + 1
+    output_width = input_width - weight_width + 1
+    Output_Tensor = ones(output_height, output_width)
+    for row in range(output_height):
+        for col in range(output_width):
+            input_grouping = input[row:row+weight_height, col:col + weight_width]
+            input_flatten = input_grouping.flatten(start_dim=1)
+            weight_flatten = weight.flatten(start_dim=1)
+            Output_Tensor[row][col] = tensordot(input_flatten, weight_flatten)
     "*** End Code ***"
     return Output_Tensor
 
@@ -423,9 +467,19 @@ class DigitConvolutionalModel(Module):
         # Initialize your model parameters here
         super().__init__()
         output_size = 10
-
         self.convolution_weights = Parameter(ones((3, 3)))
         """ YOUR CODE HERE """
+        self.epochs = 20
+        self.batch_size = 15
+        self.hidden_size = 300
+        self.output_size = output_size
+        self.input_size = 676
+        self.lr = 0.002
+        self.w1 = Parameter(torch.randn(self.input_size, self.hidden_size))
+        self.w2 = Parameter(torch.randn(self.hidden_size, self.output_size))
+        self.b1 = Parameter(torch.zeros(1, self.hidden_size))
+        self.b2 = Parameter(torch.zeros(1, self.output_size))
+     
 
 
 
@@ -441,7 +495,14 @@ class DigitConvolutionalModel(Module):
         x = x.reshape(len(x), 28, 28)
         x = stack(list(map(lambda sample: Convolve(sample, self.convolution_weights), x)))
         x = x.flatten(start_dim=1)
+        
         """ YOUR CODE HERE """
+        z1 = matmul(x, self.w1) + self.b1
+        a1 = relu(z1)
+        z2 = matmul(a1, self.w2) + self.b2
+        return z2
+        
+
 
 
     def get_loss(self, x, y):
@@ -458,6 +519,9 @@ class DigitConvolutionalModel(Module):
         Returns: a loss tensor
         """
         """ YOUR CODE HERE """
+        y_prediction = self.forward(x)
+        return cross_entropy(y_prediction, y)
+        
 
      
         
@@ -467,6 +531,21 @@ class DigitConvolutionalModel(Module):
         Trains the model.
         """
         """ YOUR CODE HERE """
+        optimizer = optim.Adam(self.parameters(), lr=self.lr)
+        
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        "*** YOUR CODE HERE ***"
+        for _ in range(self.epochs):  
+            for sample in dataloader:
+                optimizer.zero_grad()
+                current_sample = sample['x']
+                current_label = sample['label']
+                loss = self.get_loss(current_sample, current_label)
+                loss.backward()
+                optimizer.step()
+            if dataset.get_validation_accuracy() > .82:
+                break
+
 
 
 
