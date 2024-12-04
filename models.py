@@ -314,7 +314,7 @@ class LanguageIDModel(Module):
         self.languages = ["English", "Spanish", "Finnish", "Dutch", "Polish"]
         super(LanguageIDModel, self).__init__()
         "*** YOUR CODE HERE ***"
-        self.hidden_size = 256
+        self.hidden_size = 376
         self.output_size = len(self.languages)
         self.embedding = Linear(self.num_chars, self.hidden_size)
         self.rnn = Linear(self.hidden_size, self.hidden_size)
@@ -353,12 +353,12 @@ class LanguageIDModel(Module):
         "*** YOUR CODE HERE ***"        
         
         
-        hidden = torch.zeros(1, self.hidden_size)
+        batch_size = xs[0].shape[0]
+        hidden = torch.zeros(batch_size, self.hidden_size)
         
         for x in xs:
-            x = x.t()
             embedded = self.embedding(x)
-            hidden = relu(self.rnn(hidden + embedded.sum(dim=0, keepdim=True)))
+            hidden = relu(self.rnn(hidden + embedded))
         
         return self.output(hidden)
 
@@ -412,10 +412,6 @@ class LanguageIDModel(Module):
             
             if dataset.get_validation_accuracy() > 0.85:
                 break
-
-        
-
-        
 
 def Convolve(input: tensor, weight: tensor):
     """
@@ -585,5 +581,19 @@ class Attention(Module):
         B, T, C = input.size()
 
         """YOUR CODE HERE"""
+        Q = self.q_layer(input)
+        K = self.k_layer(input)
+        V = self.v_layer(input)
+        numerator = matmul(K, movedim(Q,-1,-2))
+        denominator = self.layer_size ** 0.5
+        attentionlayer = numerator / denominator
+        self.register_buffer = attentionlayer.masked_fill(self.mask[:,:,:T,:T] == 0, float('-inf'))
+        attentionlayer = softmax(self.register_buffer, dim=-1)
+        attentionlayer = matmul(attentionlayer, V)
+        output = attentionlayer
+        return output
+
+
+
 
      
