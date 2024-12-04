@@ -314,11 +314,12 @@ class LanguageIDModel(Module):
         self.languages = ["English", "Spanish", "Finnish", "Dutch", "Polish"]
         super(LanguageIDModel, self).__init__()
         "*** YOUR CODE HERE ***"
-        self.hidden_size = 376
-        self.output_size = len(self.languages)
-        self.embedding = Linear(self.num_chars, self.hidden_size)
-        self.rnn = Linear(self.hidden_size, self.hidden_size)
-        self.output = Linear(self.hidden_size, self.output_size)
+        self.hidden_size = 256
+        self.embedding_dim = 64
+        
+        self.embedding = Parameter(torch.randn(self.num_chars, self.embedding_dim))
+        self.rnn = Linear(self.embedding_dim + self.hidden_size, self.hidden_size)
+        self.output = Linear(self.hidden_size, len(self.languages))
 
 
     def run(self, xs):
@@ -350,17 +351,18 @@ class LanguageIDModel(Module):
             A node with shape (batch_size x 5) containing predicted scores
                 (also called logits)
         """
-        "*** YOUR CODE HERE ***"        
-        
-        
-        batch_size = xs[0].shape[0]
+        "*** YOUR CODE HERE ***"
+        batch_size = xs[0].size(0)
         hidden = torch.zeros(batch_size, self.hidden_size)
         
         for x in xs:
-            embedded = self.embedding(x)
-            hidden = relu(self.rnn(hidden + embedded))
+            embedded = matmul(x, self.embedding)
+            combined = torch.cat((embedded, hidden), dim=1)
+            hidden = relu(self.rnn(combined))
         
-        return self.output(hidden)
+        return self.output(hidden)    
+        
+        
 
     
     def get_loss(self, xs, y):
@@ -378,8 +380,9 @@ class LanguageIDModel(Module):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
-        predicted = self.run(xs)
-        return cross_entropy(predicted, y)
+        scores = self.run(xs)
+        return cross_entropy(scores, y)
+
         
 
     def train(self, dataset):
@@ -397,21 +400,32 @@ class LanguageIDModel(Module):
         For more information, look at the pytorch documentation of torch.movedim()
         """
         "*** YOUR CODE HERE ***"
-        optimizer = optim.Adam(self.parameters(), lr=0.01)
-        dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
-
-        for _ in range(10):
-            for batch in dataloader:
-                xs = [movedim(char, 0, 1) for char in batch['x']]
-                y = batch['label']
+        optimizer = optim.Adam(self.parameters(), lr=0.001)
+        
+        for epoch in range(20):
+            total_loss = 0
+            correct = 0
+            total = 0
+            
+            for batch in DataLoader(dataset, batch_size=32, shuffle=True):
+                xs, y = batch['x'], batch['label']
+                xs = movedim(xs, 0, 1)  # Adjust dimensions
                 
                 optimizer.zero_grad()
                 loss = self.get_loss(xs, y)
                 loss.backward()
                 optimizer.step()
+                
+                total_loss += loss.item()
+                
+                _, predicted = torch.max(self.run(xs), 1)
+                correct += (predicted == y.argmax(dim=1)).sum().item()
+                total += y.size(0)
             
-            if dataset.get_validation_accuracy() > 0.85:
+            accuracy = correct / total
+            if accuracy > 0.81:
                 break
+
 
 def Convolve(input: tensor, weight: tensor):
     """
